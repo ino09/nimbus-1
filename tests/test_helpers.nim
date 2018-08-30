@@ -15,10 +15,9 @@ import
 type
   Status* {.pure.} = enum OK, Fail, Skip
 
-proc validTest*(folder: string, name: string): bool =
+func validTest*(folder: string, name: string): bool =
   # tests we want to skip or which segfault will be skipped here
-
-  result = folder notin @["vmPerformance"] or "loop" notin name
+  result = folder notin @["vmPerformance"] or "loop" notin name or name == "add11.json"
 
 macro jsonTest*(s: static[string], handler: untyped): untyped =
   let
@@ -83,10 +82,14 @@ proc setupStateDB*(wantedState: JsonNode, stateDB: var AccountStateDB) =
   for ac, accountData in wantedState:
     let account = ethAddressFromHex(ac)
     for slot, value in accountData{"storage"}:
-      stateDB.setStorage(account, slot.parseHexInt.u256, value.getStr.parseHexInt.u256)
+      stateDB.setStorage(account, fromHex(UInt256, slot), fromHex(UInt256, value.getStr))
 
     let nonce = accountData{"nonce"}.getInt.u256
-    let code = hexToSeqByte(accountData{"code"}.getStr).toRange
+
+    # FIXME this is another artifact of hexToFoo requiring 0x, where empty strings
+    # can occur in GeneralStateTests
+    let rawCode = accountData{"code"}.getStr
+    let code = hexToSeqByte(if rawCode == "": "0x" else: rawCode).toRange
     let balance = UInt256.fromHex accountData{"balance"}.getStr
 
     stateDB.setNonce(account, nonce)
