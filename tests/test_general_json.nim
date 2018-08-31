@@ -46,7 +46,7 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
 
   var memDb = newMemDB()
   var vmState = newBaseVMState(header, newBaseChainDB(trieDB memDb))
-  var code = ""
+  var code = "0x6001600101600055"
   vmState.mutateStateDB:
     setupStateDB(fixture{"pre"}, db)
 
@@ -63,12 +63,16 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
   # message takes seq[byte], so just concat the hex string results
   # something like reduce(join_seqbytes, map(foo.getStr.hexToSeqBytes, inputseq))
   let rawData = ftrans{"data"}[0].getStr
-  let data = (if rawData == "": "0xaaaf5374fce5edbc8e2a8697c15331677e6ebf0b" else: rawData).hexToSeqByte
+  let data = (if rawData == "": "0x" else: rawData).hexToSeqByte
+
+  echo "gas limit: ", fenv{"currentGasLimit"}.getHexadecimalInt.GasInt
+  # The pre-existing abstraction here is executeTransaction from vm_state_transaction.nim
+  # TODO: flesh out that stub and refactor any code from there there
+
+  # TODO: two sorts of iteration: #1 through EIP150/EIP158/Homestead/etc
+  # #2 through transactions
 
   # of these, only gas seems to be used in
-  # https://github.com/status-im/nimbus/blob/master/nimbus/vm/computation.nim
-  # and message goes out of lexical scope.
-  # To start with, isolate changes here.
   let message = newMessage(
       # Doesn't matter
       to = toAddress,
@@ -77,13 +81,12 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
       sender = toAddress,
 
       # FIXME: use new direct int-parsing methods
+      # Also in VMTests
       value = cast[uint64](ftrans{"value"}.getHexadecimalInt).u256, # Cast workaround for negative value
       data = data,
-
-      # Only ever "" here.
       code = code,
 
-      gas = ftrans{"gasLimit"}.getHexadecimalInt,
+      gas = fenv{"currentGasLimit"}.getHexadecimalInt.GasInt,
       gasPrice = ftrans{"gasPrice"}.getHexadecimalInt,
 
       # See regarding sender.
@@ -91,44 +94,28 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
                                   createAddress = toAddress))
 
   var computation = newBaseComputation(vmState, header.blockNumber, message)
-  #[
   computation.vmState = vmState
   computation.precompiles = initTable[string, Opcode]()
 
   computation.executeOpcodes()
 
-  if not fixture{"post"}.isNil:
-    # Success checks
-    check(not computation.isError)
-    if computation.isError:
-      echo "Computation error: ", computation.error.info
+  # Success checks
+  check(not computation.isError)
+  if computation.isError:
+    echo "Computation error: ", computation.error.info
+  let logEntries = computation.getLogEntries()
+  if not fixture{"logs"}.isNil:
+    discard
+  elif logEntries.len > 0:
+    checkpoint(&"Got log entries: {logEntries}")
+    fail()
 
-    let logEntries = computation.getLogEntries()
-    if not fixture{"logs"}.isNil:
-      discard
-      # TODO hashLogEntries let actualLogsHash = hashLogEntries(logEntries)
-      # let expectedLogsHash = fixture{"logs"}.getStr
-      # check(expectedLogsHash == actualLogsHash)
-    elif logEntries.len > 0:
-      checkpoint(&"Got log entries: {logEntries}")
-      fail()
+  let h = vmState.blockHeader.stateRoot
+  echo "state hash: ", h
+  # TODO: remove a bunch of the optional-indexing {}s; they hide errors
+  #echo "expected hash: ", fixture["post"]["Byzantium"]["hash"].getStr
+  # check gasmeter
 
-    let expectedOutput = fixture{"out"}.getStr
-    check(computation.outputHex == expectedOutput)
-    let gasMeter = computation.gasMeter
+  let gasMeter = computation.gasMeter
 
-    let expectedGasRemaining = fixture{"gas"}.getHexadecimalInt
-    let actualGasRemaining = gasMeter.gasRemaining
-    checkpoint(&"Remaining: {actualGasRemaining} - Expected: {expectedGasRemaining}")
-    check(actualGasRemaining == expectedGasRemaining or
-          computation.code.hasSStore() and
-            (actualGasRemaining > expectedGasRemaining and (actualGasRemaining - expectedGasRemaining) mod 15_000 == 0 or
-             expectedGasRemaining > actualGasRemaining and (expectedGasRemaining - actualGasRemaining) mod 15_000 == 0))
-
-    if not fixture{"post"}.isNil:
-      verifyStateDb(fixture{"post"}, computation.vmState.readOnlyStateDB)
-  else:
-      # Error checks
-      check(computation.isError)
-      # TODO postState = fixture{"pre"}
-  ]#
+  # verifyStateDb(fixture{"post"}, computation.vmState.readOnlyStateDB)

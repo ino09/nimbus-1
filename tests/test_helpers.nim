@@ -17,7 +17,11 @@ type
 
 func validTest*(folder: string, name: string): bool =
   # tests we want to skip or which segfault will be skipped here
-  result = folder notin @["vmPerformance"] or "loop" notin name or name == "add11.json"
+  result = (folder != "vmPerformance" or "loop" notin name) and
+           (folder notin @["stTransitionTest", "stStackTests", "stDelegatecallTestHomestead"] and
+            folder == "stExample" and
+            name notin @["static_Call1024BalanceTooLow.json",
+                         "Call1024BalanceTooLow.json", "ExtCodeCopyTests.json"])
 
 macro jsonTest*(s: static[string], handler: untyped): untyped =
   let
@@ -28,6 +32,7 @@ macro jsonTest*(s: static[string], handler: untyped): untyped =
     name   = newIdentNode"name"
     formatted = newStrLitNode"{symbol[final]} {name:<64}{$final}{'\n'}"
   result = quote:
+    var uglyHack = -1
     var z = 0
     var filenames: seq[(string, string, string)] = @[]
     var status = initOrderedTable[string, OrderedTable[string, Status]]()
@@ -40,6 +45,8 @@ macro jsonTest*(s: static[string], handler: untyped): untyped =
       if last.validTest(name):
         filenames.add((filename, last, name))
     for child in filenames:
+      doAssert uglyHack + 1 == z
+      uglyHack = z
       let (filename, folder, name) = child
       test filename:
         echo folder, name
@@ -47,6 +54,8 @@ macro jsonTest*(s: static[string], handler: untyped): untyped =
         `handler`(parseJSON(readFile(filename)), `testStatusIMPL`)
         if `testStatusIMPL` == OK:
           status[folder][name] = Status.OK
+        else:
+          doAssert false
         z += 1
 
     status.sort do (a: (string, OrderedTable[string, Status]),
