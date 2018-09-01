@@ -46,7 +46,7 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
 
   var memDb = newMemDB()
   var vmState = newBaseVMState(header, newBaseChainDB(trieDB memDb))
-  var code = "0x6001600101600055"
+  var code = "0x60016001016000"
   vmState.mutateStateDB:
     setupStateDB(fixture{"pre"}, db)
 
@@ -97,8 +97,6 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
   computation.vmState = vmState
   computation.precompiles = initTable[string, Opcode]()
 
-  computation.executeOpcodes()
-
   # Success checks
   check(not computation.isError)
   if computation.isError:
@@ -112,6 +110,10 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
 
   let h = vmState.blockHeader.stateRoot
   echo "state hash: ", h
+  echo "state db ", vmState.readOnlyStateDB.dumpAccount("0x095e7baea6a6c7c4c2dfeb977efac326af552d87")
+  echo "state db ", vmState.readOnlyStateDB.dumpAccount("0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba")
+  echo "state db ", vmState.readOnlyStateDB.dumpAccount("0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b")
+
   # TODO: remove a bunch of the optional-indexing {}s; they hide errors
   #echo "expected hash: ", fixture["post"]["Byzantium"]["hash"].getStr
   # check gasmeter

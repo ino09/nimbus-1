@@ -6,7 +6,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  sequtils, tables,
+  sequtils, strformat, tables,
   eth_common, nimcrypto, rlp, eth_trie/[hexary, memdb],
   ../constants, ../errors, ../validation, ../account, ../logging
 
@@ -123,6 +123,7 @@ proc toByteRange_Unnecessary*(h: KeccakHash): ByteRange =
 proc setCode*(db: var AccountStateDB, address: EthAddress, code: ByteRange) =
   var account = db.getAccount(address)
   let newCodeHash = keccak256.digest code.toOpenArray
+  echo fmt"code: {code}, hash: {newCodeHash}"
   if newCodeHash != account.codeHash:
     account.codeHash = newCodeHash
     # XXX: this uses the journaldb in py-evm
@@ -133,3 +134,6 @@ proc getCode*(db: AccountStateDB, address: EthAddress): ByteRange =
   let codeHash = db.getCodeHash(address)
   result = db.trie.get(codeHash.toByteRange_Unnecessary)
 
+proc dumpAccount*(db: AccountStateDB, addressS: string): string =
+  let address = addressS.parseAddress
+  return fmt"{addressS}: Storage: {db.getStorage(address, 0.u256)}; getAccount: {db.getAccount address}"
