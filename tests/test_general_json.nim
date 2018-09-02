@@ -65,14 +65,14 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
   let rawData = ftrans{"data"}[0].getStr
   let data = (if rawData == "": "0x" else: rawData).hexToSeqByte
 
-  echo "gas limit: ", fenv{"currentGasLimit"}.getHexadecimalInt.GasInt
   # The pre-existing abstraction here is executeTransaction from vm_state_transaction.nim
   # TODO: flesh out that stub and refactor any code from there there
 
   # TODO: two sorts of iteration: #1 through EIP150/EIP158/Homestead/etc
   # #2 through transactions
+  # TODO: create separate pre-rigged example(s) for CI purposes
 
-  # of these, only gas seems to be used in
+  # This will matter when actually executing transactions more
   let message = newMessage(
       # Doesn't matter
       to = toAddress,
@@ -97,7 +97,7 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
   computation.vmState = vmState
   computation.precompiles = initTable[string, Opcode]()
 
-  # Success checks
+  # Unlike VMTests, there's no if-no-post-then-error-is-expected condition
   check(not computation.isError)
   if computation.isError:
     echo "Computation error: ", computation.error.info
@@ -108,16 +108,10 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
     checkpoint(&"Got log entries: {logEntries}")
     fail()
 
-  let h = vmState.blockHeader.stateRoot
-  echo "state hash: ", h
-  echo "state db ", vmState.readOnlyStateDB.dumpAccount("0x095e7baea6a6c7c4c2dfeb977efac326af552d87")
-  echo "state db ", vmState.readOnlyStateDB.dumpAccount("0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba")
-  echo "state db ", vmState.readOnlyStateDB.dumpAccount("0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b")
+  # TODO: do this right
+  # though, in general the results per fork aren't usually different, so can lower priority on that aspect
+  doAssert "0x" & `$`(vmState.readOnlyStateDB.rootHash).toLowerAscii == fixture["post"]["Byzantium"][0]["hash"].getStr
 
-  # TODO: remove a bunch of the optional-indexing {}s; they hide errors
-  #echo "expected hash: ", fixture["post"]["Byzantium"]["hash"].getStr
   # check gasmeter
 
   let gasMeter = computation.gasMeter
-
-  # verifyStateDb(fixture{"post"}, computation.vmState.readOnlyStateDB)

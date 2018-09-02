@@ -51,11 +51,11 @@ proc getCodeHash*(db: AccountStateDB, address: EthAddress): Hash256 =
 
 proc getBalance*(db: AccountStateDB, address: EthAddress): UInt256 =
   let account = db.getAccount(address)
-  account.balance
+  account.balance.u256
 
 proc setBalance*(db: var AccountStateDB, address: EthAddress, balance: UInt256) =
   var account = db.getAccount(address)
-  account.balance = balance
+  account.balance = cast[uint64](balance.toInt)
   db.setAccount(address, account)
 
 proc deltaBalance*(db: var AccountStateDB, address: EthAddress, delta: UInt256) =
@@ -65,9 +65,10 @@ template createTrieKeyFromSlot(slot: UInt256): ByteRange =
   # XXX: This is too expensive. Similar to `createRangeFromAddress`
   # Converts a number to hex big-endian representation including
   # prefix and leading zeros:
-  @(keccak256.digest(slot.toByteArrayBE).data).toRange
+  (@(slot.toByteArrayBE)).toRange
   # Original py-evm code:
   # pad32(int_to_big_endian(slot))
+  # Ends up morally equivalent to toByteRange_Unnecessary but with different types
 
 template getAccountTrie(stateDb: AccountStateDB, account: Account): auto =
   initSecureHexaryTrie(HexaryTrie(stateDb.trie).db, account.storageRoot)
@@ -123,11 +124,11 @@ proc toByteRange_Unnecessary*(h: KeccakHash): ByteRange =
 proc setCode*(db: var AccountStateDB, address: EthAddress, code: ByteRange) =
   var account = db.getAccount(address)
   let newCodeHash = keccak256.digest code.toOpenArray
-  echo fmt"code: {code}, hash: {newCodeHash}"
   if newCodeHash != account.codeHash:
     account.codeHash = newCodeHash
     # XXX: this uses the journaldb in py-evm
-    db.trie.put(account.codeHash.toByteRange_Unnecessary, code)
+    # Breaks state root hash calculations
+    #db.trie.put(account.codeHash.toByteRange_Unnecessary, code)
     db.setAccount(address, account)
 
 proc getCode*(db: AccountStateDB, address: EthAddress): ByteRange =

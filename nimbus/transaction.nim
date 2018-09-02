@@ -21,7 +21,7 @@ proc validate*(t: Transaction) =
     raise newException(ValidationError, "Insufficient gas")
   #  self.check_signature_validity()
 
-func hash*(transaction: Transaction): Hash256 =
+proc hash*(transaction: Transaction): Hash256 =
   # Hash transaction without signature
   type
     TransHashObj = object
