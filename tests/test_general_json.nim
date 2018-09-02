@@ -10,7 +10,7 @@ import
   byteutils, ranges/typedranges, nimcrypto/[keccak, hash],
   rlp, eth_trie/[types, memdb], eth_common,
   ./test_helpers,
-  ../nimbus/[constants, errors, logging],
+  ../nimbus/[constants, errors],
   ../nimbus/[vm_state, vm_types],
   ../nimbus/utils/header,
   ../nimbus/vm/interpreter,

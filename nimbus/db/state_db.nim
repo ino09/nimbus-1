@@ -7,8 +7,11 @@
 
 import
   sequtils, strformat, tables,
-  eth_common, nimcrypto, rlp, eth_trie/[hexary, memdb],
-  ../constants, ../errors, ../validation, ../account, ../logging
+  chronicles, eth_common, nimcrypto, rlp, eth_trie/[hexary, memdb],
+  ../constants, ../errors, ../validation, ../account
+
+logScope:
+  topics = "state_db"
 
 type
   AccountStateDB* = ref object
@@ -24,9 +27,6 @@ proc newAccountStateDB*(backingStore: TrieDatabaseRef,
                         root: KeccakHash, readOnly: bool = false): AccountStateDB =
   result.new()
   result.trie = initSecureHexaryTrie(backingStore, root)
-
-proc logger*(db: AccountStateDB): Logger =
-  logging.getLogger("db.State")
 
 template createRangeFromAddress(address: EthAddress): ByteRange =
   ## XXX: The name of this proc is intentionally long, because it
@@ -105,13 +105,13 @@ proc getStorage*(db: AccountStateDB, address: EthAddress, slot: UInt256): (UInt2
   else:
     result = (0.u256, false)
 
-proc setNonce*(db: var AccountStateDB, address: EthAddress, newNonce: UInt256) =
+proc setNonce*(db: var AccountStateDB, address: EthAddress, newNonce: AccountNonce) =
   var account = db.getAccount(address)
   if newNonce != account.nonce:
     account.nonce = newNonce
     db.setAccount(address, account)
 
-proc getNonce*(db: AccountStateDB, address: EthAddress): UInt256 =
+proc getNonce*(db: AccountStateDB, address: EthAddress): AccountNonce =
   let account = db.getAccount(address)
   account.nonce
 
