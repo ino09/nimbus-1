@@ -9,6 +9,7 @@ import
   unittest, strformat, strutils, sequtils, tables, json, ospaths, times,
   byteutils, ranges/typedranges, nimcrypto/[keccak, hash],
   rlp, eth_trie/[types, memdb], eth_common,
+  eth_keys,
   ./test_helpers,
   ../nimbus/[constants, errors],
   ../nimbus/[vm_state, vm_types],
@@ -96,6 +97,15 @@ proc testFixture(fixtures: JsonNode, testStatusIMPL: var TestStatus) =
   var computation = newBaseComputation(vmState, header.blockNumber, message)
   computation.vmState = vmState
   computation.precompiles = initTable[string, Opcode]()
+
+  var huh = ftrans["secretKey"].getStr
+  removePrefix(huh, "0x")
+  let privateKey = initPrivateKey(huh)
+  echo privateKey
+  let publicKey = getPublicKey(privateKey)
+  echo publicKey
+  #let pkHash = keccak256 publicKey
+  #echo pkHash
 
   # Unlike VMTests, there's no if-no-post-then-error-is-expected condition
   check(not computation.isError)
