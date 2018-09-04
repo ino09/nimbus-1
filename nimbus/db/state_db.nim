@@ -65,10 +65,10 @@ template createTrieKeyFromSlot(slot: UInt256): ByteRange =
   # XXX: This is too expensive. Similar to `createRangeFromAddress`
   # Converts a number to hex big-endian representation including
   # prefix and leading zeros:
-  (@(slot.toByteArrayBE)).toRange
+  @(slot.toByteArrayBE).toRange
   # Original py-evm code:
   # pad32(int_to_big_endian(slot))
-  # Ends up morally equivalent to toByteRange_Unnecessary but with different types
+  # morally equivalent to toByteRange_Unnecessary but with different types
 
 template getAccountTrie(stateDb: AccountStateDB, account: Account): auto =
   initSecureHexaryTrie(HexaryTrie(stateDb.trie).db, account.storageRoot)
@@ -127,8 +127,8 @@ proc setCode*(db: var AccountStateDB, address: EthAddress, code: ByteRange) =
   if newCodeHash != account.codeHash:
     account.codeHash = newCodeHash
     # XXX: this uses the journaldb in py-evm
-    # Breaks state root hash calculations
-    #db.trie.put(account.codeHash.toByteRange_Unnecessary, code)
+    # Breaks state hash root calculations
+    # db.trie.put(account.codeHash.toByteRange_Unnecessary, code)
     db.setAccount(address, account)
 
 proc getCode*(db: AccountStateDB, address: EthAddress): ByteRange =
