@@ -93,9 +93,7 @@ proc setupStateDB*(wantedState: JsonNode, stateDB: var AccountStateDB) =
     for slot, value in accountData{"storage"}:
       stateDB.setStorage(account, fromHex(UInt256, slot), fromHex(UInt256, value.getStr))
 
-    # FIXME this is another artifact of hexToFoo requiring 0x, where empty strings
-    # can occur in GeneralStateTests
-    let nonce = accountData{"nonce"}.getStr.parseInt.AccountNonce
+    let nonce = accountData{"nonce"}.getStr.parseHexInt.AccountNonce
     let rawCode = accountData{"code"}.getStr
     let code = hexToSeqByte(if rawCode == "": "0x" else: rawCode).toRange
     let balance = UInt256.fromHex accountData{"balance"}.getStr
