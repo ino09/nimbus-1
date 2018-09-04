@@ -11,16 +11,11 @@ import
 type
   Account* = object
     nonce*:             AccountNonce
-
-    # XXX: RLP seems not to output UInt256 properly in this situation
-    # Can't be merged to master
-    #balance*:           UInt256
-    balance*:           uint64
-
+    balance*:           UInt256
     storageRoot*:       Hash256
     codeHash*:          Hash256
 
-proc newAccount*(nonce: AccountNonce = 0, balance: uint64 = 0): Account =
+proc newAccount*(nonce: AccountNonce = 0, balance: UInt256 = 0.u256): Account =
   result.nonce = nonce
   result.balance = balance
   result.storageRoot = BLANK_ROOT_HASH

@@ -51,11 +51,11 @@ proc getCodeHash*(db: AccountStateDB, address: EthAddress): Hash256 =
 
 proc getBalance*(db: AccountStateDB, address: EthAddress): UInt256 =
   let account = db.getAccount(address)
-  account.balance.u256
+  account.balance
 
 proc setBalance*(db: var AccountStateDB, address: EthAddress, balance: UInt256) =
   var account = db.getAccount(address)
-  account.balance = cast[uint64](balance.toInt)
+  account.balance = balance
   db.setAccount(address, account)
 
 proc deltaBalance*(db: var AccountStateDB, address: EthAddress, delta: UInt256) =
